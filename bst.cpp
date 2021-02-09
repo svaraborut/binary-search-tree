@@ -16,15 +16,18 @@
 
 #define __EXPERIMENTAL_AUTO_BALANCE
 
+// Helper functions
 #define MAX(a, b) (a) > (b) ? (a) : (b)
 #define MIN(a, b) (a) < (b) ? (a) : (b)
 #define NNL(_1, _2) (_1) != nullptr ? (_1) : (_2)
 
+// Build a conditional block for comparison
 #define TRIPLE_COMPARE(cmp, a, b, less, gt, eq) \
     if (cmp(a, b)) { less; }                    \
     else if (cmp(b, a)) { gt; }                 \
     else { eq; }
 
+// No insertion return pair
 #define NOINSERT std::pair<iterator, bool>{ iterator{}, false }
 
 // Make the node become the left child of the parent
@@ -37,7 +40,7 @@
     if (p) (p)->right = c;  \
     if (c) (c)->parent = p;
 
-// Replace parents child
+// Replace old_child with new_child to the parent
 #define CHILD_AS(p, old_child, new_child)  \
     if (p) {                               \
         if ((p)->left == (old_child))      \
@@ -49,10 +52,16 @@
     }                                      \
     if (new_child) (new_child)->parent = (p);
 
+// Get left branch depth for a node
 #define DEPTH_LEFT(node) (node)->left ? ((node)->left->depth + 1) : 0
+
+// Get right branch depth for a node
 #define DEPTH_RIGHT(node) (node)->right ? ((node)->right->depth + 1) : 0
+
+// Update node depth value
 #define REFRESH_DEPTH(node) (node)->depth = MAX(DEPTH_LEFT(node), DEPTH_RIGHT(node))
 
+// Detach node's children
 #define DETACH(node) (node)->left = nullptr; (node)->right = nullptr;
 
 
@@ -83,7 +92,16 @@ class bst {
     // INNER
     enum find_method{EXACT, LEFT, RIGHT};
 
-    node* __find_key(node* current, const K& k, const find_method method) {
+    /**
+     * Provided a local root, find a node by key within the downstream tree.
+     * If method is different from EXACT, the function will always return
+     * a node that will be the LEFT (or RIGHT) closest node to the searched key.
+     * @param current   local root to start from
+     * @param k         key to search for
+     * @param method    EXACT, LEFT, RIGHT
+     * @return          the found node or nullptr
+     */
+    node* __find_key(node* current, const K& k, const find_method method) noexcept {
         node_pointer lastl{nullptr}, lastr{nullptr}, found{nullptr};
 
         while (current != nullptr && found == nullptr) {
@@ -102,19 +120,34 @@ class bst {
         }
     }
 
-    static node* __left_most(node* n) {
+    /**
+     * Traverses the tree from the local root and returns the left-most node
+     * (it may be the local root itself if no left children is present)
+     * @param n     local root to start from
+     * @return      left-most in the tree
+     */
+    static node* __left_most(node* n) noexcept {
         while (n && n->left) { n = n->left; }
         return n;
     }
 
-    static node* __right_most(node* n) {
+    /**
+     * Traverses the tree from the local root and returns the right-most node
+     * (it may be the local root itself if no right children is present)
+     * @param n     local root to start from
+     * @return      right-most in the tree
+     */
+    static node* __right_most(node* n) noexcept {
         while (n && n->right) { n = n->right; }
         return n;
     }
 
-    // Rotate left and return the up-stepping node
-    // Returning the new LOCAL ROOT
-    node* __rotate_left(node *n) {
+    /**
+     * Given a local-root performs a left rotation of the tree below.
+     * @param n     local root to rotate
+     * @return      return the new local root for this sub tree
+     */
+    node* __rotate_left(node *n) noexcept {
         node* p = n->parent;
         node* nnew = n->right;
         // Rotate
@@ -128,9 +161,12 @@ class bst {
         return NNL(nnew, n);
     }
 
-    // Rotate right and return the up-stepping node
-    // Returning the new LOCAL ROOT
-    node* __rotate_right(node* n) {
+    /**
+     * Given a local-root performs a right rotation of the tree below.
+     * @param n     local root to rotate
+     * @return      return the new local root for this sub tree
+     */
+    node* __rotate_right(node* n) noexcept {
         node* p = n->parent;
         node* nnew = n->left;
         if (nnew) {
@@ -144,7 +180,34 @@ class bst {
         return NNL(nnew, n);
     }
 
-    node* __evaluate_rotation(node* n) {
+    /**
+     * Given a local-root performs rotation if required.
+     *
+     * ALGORITHM:
+     * For each node we keep a ~up to date~ depth count. Assuming dl
+     * is the depth of the left branch and dr the left of the right branch
+     * When evaluating if a rotation is required:
+     *
+     * - dl > (dr + 1) : the tree is very left unbalanced perform a right rotation
+     * - (dl + 1) < dr : the tree is very right unbalanced perform a left rotation
+     *
+     * The above algorithm alone does not properly converge due to rotation being
+     * symmetric on a zig-zag tree. Hence we keep opening the tree, moving the
+     * unbalance to the same direction as the child is child-of-parent. (Eg, left
+     * children will tend to be left-unbalanced & right children will tend to be
+     * right-unbalanced) This efficiently tends to pack the tree. Still I belive
+     * balancing is only heuristic (eg.: I do not believe there is strong depth
+     * upper bound guarantee)
+     *
+     * - dl > dr && n->parent && n->parent->right == n :
+     *      the tree is left unbalanced and we are a right child -> right rotate
+     * - dl < dr && n->parent && n->parent->left == n
+     *      the tree is right unbalanced and we are a left child -> left rotate
+     *
+     * @param n     local root to rotate
+     * @return      return the new local root for this sub tree
+     */
+    node* __if_required_rotate(node* n) noexcept {
         unsigned int dl = DEPTH_LEFT(n);
         unsigned int dr = DEPTH_RIGHT(n);
 
@@ -175,25 +238,36 @@ class bst {
         }
     }
 
-    void __balance_node(node* n) {
+    /**
+     * Given a node it balances it and all its parents up to the root.
+     * @param n     the node to start from
+     */
+    void __balance_node(node* n) noexcept {
         while (n != nullptr) {
-            // `__evaluate_rotation` will return the new local root.
+            // `__if_required_rotate` will return the new local root.
             // deep depths has already been updated. The new local root
             // may be the same node `n` or a `n`'s ex-children, in both
             // cases those nodes has been already evaluated.
-            n = __evaluate_rotation(n)->parent;
+            n = __if_required_rotate(n)->parent;
         }
     }
 
-    node* __balance_tree(node* tree) {
+    /**
+     * Balances the entire tree.
+     *
+     * ALGORITHM:
+     * Performing a deep first iteration (where it is granted LEFT-CHILD,
+     * RIGHT-CHILD, PARENT visit order) on the tree and apply `__if_required_rotate`
+     * on the node.
+     *
+     */
+    void __balance_tree(/*node* tree*/) noexcept {
 
         // Deep first iteration strategy
-        node* current = tree;
+        node* current = root;
         char dir_flag = 0; // 0 = NONE, 1 = UP_FROM_LEFT, 2 = UP_FROM_RIGHT
 
         while(current != nullptr) {
-//            std::cout << current << std::endl;
-
             if (dir_flag == 0 && current->left) {
                 // Go down on the left (nothing visited yet)
                 dir_flag = 0;
@@ -208,26 +282,24 @@ class bst {
                 // Re-balance by evaluating children depths (being the iteration
                 // deep-first we have already computed updated depths for the
                 // children nodes.
-//                std::cout << current << " = "
-//                          << " (" << current->data.first << ") "
-//                          << " " << current->parent << std::endl;
 
                 // The parent node is evaluated after L/R children hence for any
                 // type of rotation the new LOCAL ROOT has been evaluated
                 // hence continue from the new LOCAL ROOT
-                current = __evaluate_rotation(current);
+                current = __if_required_rotate(current);
                 // Go up
                 dir_flag = current->parent && current == current->parent->left ? 1 : 2;
                 current = current->parent;
             }
         }
-
-        return root;
     }
 
+    /**
+     * Inserts a pair in the tree, returning the node.
+     * @param x     pair to be inserted
+     * @return      the inserted node or nullptr if key already present
+     */
     node* __insert(pair_type&& x) {
-        bool debug = x.first == 3058;
-
         node* parent = nullptr;
         node** handle = &root;
 
@@ -251,7 +323,14 @@ class bst {
         return *handle;
     }
 
-    node* __extract(const K& k) {
+    /**
+     * Extracts a node from the tree by key. The extracted node
+     * is completely detached from the tree and should be deleted
+     * after use.
+     * @param k     the key to search for
+     * @return      the node or nullptr if key was not found
+     */
+    node* __extract(const K& k) noexcept {
         node* n = __find_key(root, k, EXACT);
         if (n == nullptr) return n;
 
@@ -274,8 +353,6 @@ class bst {
                 // !! If we do not move (eg there are no LEFT children) nnew->parent
                 // !! is a RIGHT child
                 CHILD_AS(nnew->parent, nnew, nnew->right);
-//                CHILD_LEFT(nnew->parent, nnew->right);
-//                std::cout << "CHILD_LEFT" << std::endl;
             } else {
                 // Go left
                 nnew = __right_most(n->left);
@@ -283,16 +360,9 @@ class bst {
                 // !! If we do not move (eg there are no RIGHT children) nnew->parent
                 // !! is a RIGHT child
                 CHILD_AS(nnew->parent, nnew, nnew->left);
-//                CHILD_RIGHT(nnew->parent, nnew->left);
-//                std::cout << "CHILD_RIGHT" << std::endl;
             }
 
             nnew_parent = nnew->parent;
-
-//            PV("n ->", n);
-//            PV("p ->", p);
-//            PV("nnew ->", nnew);
-//            PV("nnew_parent ->", nnew_parent);
 
             // Inplace it in the tree
             CHILD_LEFT(nnew, n->left);
@@ -301,7 +371,7 @@ class bst {
             DETACH(n);
 
             // Balance starting from the amputation area, both the extracted
-            // and the implaced nodes will be balanced
+            // and the implanted nodes will be balanced
 
 #ifdef __EXPERIMENTAL_AUTO_BALANCE
             __balance_node(nnew_parent);
@@ -309,13 +379,9 @@ class bst {
         } else {
             // Only one branch present, move it
             node* nnew = n->left ? n->left : n->right;
-
-//            std::cout << "n=" << n << std::endl;
-//            std::cout << "p=" << p << std::endl;
-//            std::cout << "nnew=" << nnew << std::endl;
-
             CHILD_AS(p, n, nnew);
             DETACH(n);
+
             // Balance node parents (balance is unlikely required, but the
             // function is used to propagate depths)
 #ifdef __EXPERIMENTAL_AUTO_BALANCE
@@ -350,8 +416,8 @@ public:
     bst& operator=(bst const& src) = default;
 
     bst(bst&& src) noexcept:
-        root{std::exchange(src.root, nullptr)},
-        _size{std::exchange(src._size, 0)}
+            root{std::exchange(src.root, nullptr)},
+            _size{std::exchange(src._size, 0)}
     { /* Swap tree with the other class */ }
 
     bst& operator=(bst&& src) noexcept {
@@ -360,6 +426,13 @@ public:
         return *this;
     }
 
+    /**
+     * Create a map from an iterable iterable source of
+     * pair<K,V> values.
+     * @tparam Iter
+     * @param begin     The iterator
+     * @param end       The end() iterator
+     */
     template<typename Iter>
     bst(Iter begin, Iter end) {
         while(begin != end) {
@@ -378,6 +451,12 @@ public:
 
 // MODIFIERS
 
+    /**
+     * Inserts a pair in the map. If insertion is successful returns an
+     * iterator to the node and true, else the end() iterator and false.
+     * @param x     The pair to be inserted
+     * @return      a pair<iterator, bool>
+     */
     std::pair<iterator, bool> insert(const pair_type& x) { // ✓ testing
         pair_type t{x}; // Clone the pair
         node* ref = __insert(std::move(t));
@@ -388,6 +467,12 @@ public:
         return ref == nullptr ? NOINSERT : std::pair<iterator, bool>{ iterator{root, ref} , true };
     }
 
+    /**
+     * Inserts multiple pairs in the map. Returning the iterator and the
+     * boolean result of the last value provided @see insert().
+     * @param x     The pair to be inserted
+     * @return      a pair<iterator, bool>
+     */
     template<class... Types>
     std::pair<iterator, bool> emplace(Types&&... args) { // ✓ testing
         // todo : this logic is not so intuitive
@@ -396,13 +481,24 @@ public:
         return last;
     }
 
-    size_type erase(const K& k) { // ✓ testing
+    /**
+     * Removes a key from the map.
+     * @param k     The key to remove
+     * @return      The number of values removed
+     */
+    size_type erase(const K& k) noexcept { // ✓ testing
         node* n = __extract(k);
         delete n;
         return (n == nullptr) ? 0 : 1;
     }
 
-    value_type pop(const K& k) { // ✓ testing
+    /**
+     * Pops a value from the map returning the value.
+     * @param k     The key to remove
+     * @return      The value that was associated to the key
+     *              or default value for value_type
+     */
+    value_type pop(const K& k) noexcept { // ✓ testing
         node* n = __extract(k);
         if (n == nullptr) {
             return value_type{};
@@ -413,49 +509,77 @@ public:
         }
     }
 
-    // Clear
-    void clear() { // ✓ testing
+    /**
+     * Removes all the values from the map
+     */
+    void clear() noexcept { // ✓ testing
         _size = 0;
         root = nullptr;
     }
 
-    // Balance
-    void balance() { // ✓ testing
-        __balance_tree(root);
+    /**
+     * Balances the tree
+     */
+    void balance() noexcept { // ✓ testing
+        __balance_tree();
     }
 
 // GETTERS
 
-    // Contains
-    bool has(const K& k) { // ✓ testing
+    /**
+     * Weather the map contains a given key
+     * @param k     The key to search for
+     * @return      True if value is present
+     */
+    bool has(const K& k) noexcept { // ✓ testing
         return __find_key(root, k, EXACT) != nullptr;
     }
 
-    // Find
-    iterator find(const K& k) { // ✓ testing
+    /**
+     * Searches for a key, if the key is present
+     * an iterator that starts at that key is returned
+     * else end() is returned.
+     * @param k     The key to search for
+     * @return      The iterator
+     */
+    iterator find(const K& k) noexcept { // ✓ testing
         node* found = __find_key(root, k, EXACT);
         return found == nullptr ? end() : iterator{root, found};
     }
-    const_iterator find(const K& k) const {
+    const_iterator find(const K& k) const noexcept {
         node* found = __find_key(root, k, EXACT);
         return found == nullptr ? end() : const_iterator{root, found};
     }
 
-    size_type size() { return _size; }
-    bool empty() { return _size == 0; }
-    unsigned int depth() {
+    /**
+     * Returns the size of the map O(1)
+     * @return      The size of the map
+     */
+    size_type size() noexcept { return _size; }
+
+    /**
+     * Check weather the map is empty O(1)
+     * @return      True if the map is empty
+     */
+    bool empty() noexcept { return _size == 0; }
+
+    /**
+     * Returns the current depth of the map O(1)
+     * @return      The depth of the map
+     */
+    unsigned int depth() noexcept {
         return root ? root->depth + 1: 0;
     }
 
     /**
-     * @param k     The key for which data should be retrieved
-     * @return      A reference to the data related to the key
-     *
      * (specs from std::map):
      * Allows for easy lookup with the subscript ( @c [] ) operator.  Returns
      * data associated with the key specified in subscript.  If the key does
      * not exist, a pair with that key is created using default values, which
      * is then returned.
+     *
+     * @param k     The key for which data should be retrieved
+     * @return      A reference to the data related to the key
      */
     V& operator[](const K& k) { // ✓ testing
         iterator _i = find(k);
@@ -472,15 +596,24 @@ public:
         return _i->second;
     }
 
-    range_iterator operator()(const K& lower, const K& upper) {
+    /**
+     * Returns an iterator to a slice of the map. The slice will start
+     * at the first key greater or equal to lower and will end with the
+     * last key lower or equal to upper.
+     *
+     * @param lower     The lower inclusive bound
+     * @param upper     The upper inclusive bound
+     * @return          The iterator
+     */
+    range_iterator operator()(const K& lower, const K& upper) noexcept {
         if (compare(upper, lower)) return range_iterator{};
         return range_iterator{
-            root,
-            __find_key(root, lower, RIGHT),
-            __find_key(root, upper, LEFT)
+                root,
+                __find_key(root, lower, RIGHT),
+                __find_key(root, upper, LEFT)
         };
     }
-    const_range_iterator operator()(const K& lower, const K& upper) const {
+    const_range_iterator operator()(const K& lower, const K& upper) const noexcept {
         if (compare(upper, lower)) return const_range_iterator{};
         return const_range_iterator{
                 root,
@@ -492,26 +625,32 @@ public:
 
 // ITERATORS
 
-    // Begin
-    iterator begin() {
+    /**
+     * An iterator of the map elements starting with the lower key
+     * @return          The iterator
+     */
+    iterator begin() noexcept {
         return iterator{root, __left_most(root)};
     }
-    const_iterator begin() const {
+    const_iterator begin() const noexcept {
         return const_iterator{root, __left_most(root)};
     };
-    const_iterator cbegin() const {
+    const_iterator cbegin() const noexcept {
         return const_iterator{root, __left_most(root)};
     };
 
-    // End
     // https://www.cplusplus.com/reference/map/map/end/
-    iterator end() {
+    /**
+     * The end iterator for this map (a simple nullptr reference)
+     * @return          The iterator
+     */
+    iterator end() noexcept {
         return iterator{root, nullptr};
     }
-    const_iterator end() const {
+    const_iterator end() const noexcept {
         return const_iterator{root, nullptr};
     }
-    const_iterator cend() const {
+    const_iterator cend() const noexcept {
         return const_iterator{root, nullptr};
     }
 
@@ -524,7 +663,9 @@ public:
         return a.root != b.root;
     }
 
-    // todo : const here caues issues
+    /**
+     * Prints the json-style representation of the map
+     */
     friend std::ostream& operator<<(std::ostream& os, const bst& x) {
         os << "size: " << x.size() << "\n";
         os << "{ ";
@@ -550,10 +691,10 @@ private:
             os << pref << "(empty)\n";
         } else {
             os << pref
-                << from
-                << " [depth=" << from->depth
-                << ", parent=" << from->parent << ", left=" << from->left << ", right=" << from->right << "]"
-                << " (" << from->data.first << ":" << from->data.second << ")\n";
+               << from
+               << " [depth=" << from->depth
+               << ", parent=" << from->parent << ", left=" << from->left << ", right=" << from->right << "]"
+               << " (" << from->data.first << ":" << from->data.second << ")\n";
 
             std::stringstream ff_s;
             ff_s << pref_rest   << "|->L ";
@@ -571,14 +712,34 @@ private:
 
 public:
 
-    void print_tree() {
-        std::cout << "Size: " << _size << "\n";
-        __print_tree(std::cout, "", "", root);
-        std::cout << std::endl;
+    /**
+     * Prints the tree structure on a std::ostream
+     */
+    void print_tree(std::ostream& os) {
+        os << "Size: " << _size << "\n";
+        __print_tree(os, "", "", root);
+        os << std::endl;
     }
 
-    void info_tree() {
-        std::cout << "bst{size=" << _size << ", root=" << root << "}\n";
+    /**
+     * Prints the tree structure on the std::cout
+     */
+    void print_tree() {
+        print_tree(std::cout);
+    }
+
+    /**
+     * Prints the tree info on a std::ostream
+     */
+    void tree_info(std::ostream& os) {
+        os << "bst{size=" << _size << ", root=" << root << "}\n";
+    }
+
+    /**
+     * Prints the tree info on the std::cout
+     */
+    void tree_info() {
+        tree_info(std::cout);
     }
 
 };
@@ -592,7 +753,7 @@ struct bst<K, V, Compare>::node {
     unsigned int depth;
     std::pair<const K, V> data;
 
-    explicit node(node* parent, std::pair<const K, V>& pair):
+    explicit node(node* parent, std::pair<const K, V>& pair) noexcept:
             parent{parent},
             data{pair},
             depth{0}
@@ -601,9 +762,9 @@ struct bst<K, V, Compare>::node {
         std::cout << "Allocated: " << pair.first << std::endl;
 #endif
     };
-    explicit node(node* parent, std::pair<const K, V>&& pair):
+    explicit node(node* parent, std::pair<const K, V>&& pair) noexcept:
             parent{parent},
-            data{pair},
+            data{std::move(pair)},
             depth{0}
     {
 #ifdef __DEBUG_NODE_RAII
@@ -611,11 +772,12 @@ struct bst<K, V, Compare>::node {
 #endif
     };
 
-    node(node& src):
+    explicit node(node& src):
             parent{src.parent},
             left{src.left == nullptr ? nullptr : new node{*src.left}},
             right{src.right == nullptr ? nullptr : new node{*src.right}},
-            data{src.data}
+            data{src.data},
+            depth{src.depth}
     {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Allocated: copy" << std::endl;
@@ -632,6 +794,7 @@ struct bst<K, V, Compare>::node {
     }
 };
 
+// todo : fix iterators
 template <typename K, typename V, typename Compare>
 template<typename VT>
 class bst<K, V, Compare>::_iterator {
@@ -650,9 +813,9 @@ class bst<K, V, Compare>::_iterator {
 
 public:
 
-    _iterator() noexcept: root{nullptr}, current{nullptr} { }
     // https://en.cppreference.com/w/cpp/named_req/Iterator
     // https://internalpointers.com/post/writing-custom-iterators-modern-cpp
+    _iterator() noexcept: root{nullptr}, current{nullptr} { }
 
 
     using iterator_category = std::bidirectional_iterator_tag;
@@ -774,7 +937,7 @@ class bst<K, V, Compare>::_range_iterator: public bst<K, V, Compare>::_iterator<
     _range_iterator(elem_ref root, elem_ref lower, elem_ref upper) noexcept:
             _base{root, lower}, lower{lower}, upper{upper} {}
     _range_iterator(elem_ref root, elem_ref start, elem_ref lower, elem_ref upper) noexcept:
-        _base{root, start}, lower{lower}, upper{upper} {}
+            _base{root, start}, lower{lower}, upper{upper} {}
 
 public:
 

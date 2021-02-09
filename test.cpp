@@ -359,8 +359,8 @@ int main() {
         it->second = " ";
         ASSERT(m[it->first] == " ", "Value should be updatable through iterator");
 
-        std::next(it);
-        std::next(it, 1);
+//        std::next(it);
+//        std::next(it, 1);
 
         K _1 = it->first;
         ++it;
