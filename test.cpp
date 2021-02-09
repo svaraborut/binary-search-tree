@@ -14,6 +14,12 @@
 #include <iterator>
 #include <cstdlib>
 
+//#define __TEST_ASSIGN
+//#define __TEST_BASIC
+#define __TEST_ITER
+//#define __TEST_STOCHASTIC
+
+
 #define TEST(name) \
     std::cout << "TEST " << (name) << "\n"; \
     try {
@@ -183,7 +189,12 @@ bst<int, int> dummy_ii_map(std::size_t size = 10) {
     return dummy_ii_map(random_unique_array(size));
 }
 
-
+template<typename Iter>
+unsigned int count_iter(Iter begin, Iter end) {
+    auto c = 0ul;
+    while(begin != end) { c++; ++begin; }
+    return c;
+}
 
 int main() {
     std::cout << "Testing bst<K, V>" << std::endl;
@@ -192,6 +203,7 @@ int main() {
 
     // TEST
 
+#ifdef __TEST_ASSIGN
     TEST("Assignment / Constructor")
     {
         using V = std::string;
@@ -252,7 +264,9 @@ int main() {
 
     }
     END_TEST()
+#endif
 
+#ifdef __TEST_BASIC
     TEST("Basic")
     {
         using V = int;
@@ -327,7 +341,9 @@ int main() {
 
     }
     END_TEST()
+#endif
 
+#ifdef __TEST_ITER
     TEST("Iterable")
     {
         using V = std::string;
@@ -346,7 +362,16 @@ int main() {
         ASSERT(n.begin() == n.end(), "begin() == end() on an empty map");
         ASSERT(!(n.begin() != n.end()), "!(begin() != end()) on an empty map");
 
-        map m = dummy_is_map();
+        // Insert iterator
+        std::pair<map::iterator, bool> ip = n.insert(map::value_type{1, "some"});
+        ASSERT(ip.second == true, "insert().second should be true");
+        ASSERT(ip.first->first == 1, "insert() iterator should point to inserted key");
+        ASSERT(ip.first->second == "some", "insert() iterator should point to inserted value");
+        ++ip.first;
+        ASSERT(ip.first == n.end(), "insert() iterator should exhaust on a 1 elem map");
+
+        // Dummy map
+        map m = dummy_is_map(10);
         ASSERT(m.begin() != m.end(), "begin() != end() on a non empty map");
 
         // Other accesses
@@ -369,20 +394,50 @@ int main() {
         K _3 = it->first;
 
         map::iterator _i = n.end();
-        map::range_iterator _j = m.end();
 
         ASSERT(_1 != _2, "After iterator++ key should be different");
         ASSERT(_2 != _3, "After iterator-- key should be different");
         ASSERT(_3 == _1, "After (iterator++)-- key should be the same");
 
         // Eventually should reach end
-        while((++it) != m.end()) {}
+        map::iterator _last;
+        while((++it) != m.end()) {
+            _last = it;
+        }
 
         // At the end
-        // todo : test end()--
+        map::iterator _end = m.end();
+        --_end;
+        ASSERT(_last == _end, "--end() should be the last element");
+        ASSERT(_end->first == 10, "--end() should be the last element (key==10)");
+
+        // Inverted key range
+        map::iterator _range = n(1, 0);
+        ASSERT(_range == n.end(), "Range should be empty")
+
+        // Range with 1 exact key
+        n[5] = "x";
+        _range = n(1, 1);
+        ASSERT(count_iter(_range, n.end()) == 1, "Range should have 1 element");
+
+        // Range in gap
+        _range = n(2, 4);
+        ASSERT(count_iter(_range, n.end()) == 0, "Range in gap should be empty");
+
+        const auto _l = 4ul, _u = 7ul;
+        _range = n(_l, _u);
+        bool _cond = true;
+        while((++_range) != m.end()) {
+            print(_l, _range->first, _u);
+            _cond = _cond && (_range->first >= _l && _range->first <= _u);
+        }
+        ASSERT(_cond, "range should return keys >= lower and <= upper");
+
     }
     END_TEST()
+#endif
 
+#ifdef __TEST_STOCHASTIC
     TEST("Stochastic test")
     {
         using V = int;
@@ -487,8 +542,7 @@ int main() {
             if (helper::lower(upper.first, lower.first)) std::swap(lower, upper);
 //        print(lower.first, upper.first);
 
-            // !! i do not like this cast
-            vector slc{x(lower.first, upper.first), static_cast<map::range_iterator>(x.end())};
+            vector slc{x(lower.first, upper.first), x.end()};
 //        vector slc{x(29900 - 1, upper.first), static_cast<map::range_iterator>(x.end())};
 //        helper::print_vector(helper::map_to_vector(x));
 //        helper::print_vector(slc);
@@ -504,6 +558,7 @@ int main() {
 
     }
     END_TEST()
+#endif
 
     return 0;
 }

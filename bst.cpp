@@ -4,17 +4,18 @@
 #include <utility>
 #include <sstream>
 
+#define __EXPERIMENTAL_AUTO_BALANCE
+#define __ITERATOR_RECOVERABLE
+#define __ITERATOR_LOWER_END
+
 //#define __DEBUG_ITERATOR
-//#define __DEBUG_ITERATOR_2
 //#define __DEBUG_NODE_RAII
 //#define __DEBUG_BST_RAII
 //#define __DEBUG_BALANCE
+
 #define PV(name, node) \
     std::cout << name << " " << node \
     << " [parent=" << node->parent << ", l=" << node->left << ", r=" << node->right << "]" << std::endl
-
-
-#define __EXPERIMENTAL_AUTO_BALANCE
 
 // Helper functions
 #define MAX(a, b) (a) > (b) ? (a) : (b)
@@ -68,7 +69,7 @@
 template <typename K, typename V, typename Compare = std::less<K>>
 class bst {
 
-    // Definitions
+// DEFINITIONS
 
     Compare compare;
 
@@ -81,13 +82,10 @@ class bst {
     node* root{nullptr};
     size_type _size{0};
 
-// ITERATOR
+// INTERNAL
 
     template<typename value_type>
     class _iterator;
-
-    template<typename value_type>
-    class _range_iterator;
 
     // INNER
     enum find_method{EXACT, LEFT, RIGHT};
@@ -393,15 +391,20 @@ class bst {
         return n;
     }
 
-    // API
+// API
 
 public:
 
+    // Mimic std::map
+    // https://en.cppreference.com/w/cpp/container/map
+    using key_type = K;
+    using mapped_type = V;
+    using value_type = pair_type;
+    using size_type = std::size_t;
+    using key_compare = Compare;
+
     using iterator = _iterator<pair_type>;
     using const_iterator = _iterator<const pair_type>;
-    using range_iterator = _range_iterator<pair_type>;
-    using const_range_iterator = _iterator<const pair_type>;
-    using value_type = pair_type;
     using node_type = node;
 
     // RAII & Copy and move
@@ -445,15 +448,14 @@ public:
 #ifdef __DEBUG_BST_RAII
         std::cout << "~bst() size=" << _size << std::endl;
 #endif
-        // Delete root node and let RAII do the rest
-        delete root;
+        delete root; // Delete root node and let RAII do the rest
     }
 
 // MODIFIERS
 
     /**
      * Inserts a pair in the map. If insertion is successful returns an
-     * iterator to the node and true, else the end() iterator and false.
+     * iterator to the pair and true, else the end() iterator and false.
      * @param x     The pair to be inserted
      * @return      a pair<iterator, bool>
      */
@@ -468,17 +470,20 @@ public:
     }
 
     /**
-     * Inserts multiple pairs in the map. Returning the iterator and the
-     * boolean result of the last value provided @see insert().
+     * Inserts multiple pairs in the map. If at least one insertion is
+     * successful returns an iterator to the FIRST INSERTED pair and true.
+     * If none of the values has been inserted end() and false are returned.
      * @param x     The pair to be inserted
      * @return      a pair<iterator, bool>
      */
     template<class... Types>
     std::pair<iterator, bool> emplace(Types&&... args) { // ✓ testing
-        // todo : this logic is not so intuitive
-        std::pair<iterator, bool> last = NOINSERT;
-        for (auto&& a : { args... }) last = insert(a);
-        return last;
+        node* ref{nullptr};
+        for (auto&& a : { args... }) {
+            node* ins = __insert(std::move(a));
+            ref = NNL(ref, ins);
+        }
+        return ref == nullptr ? NOINSERT : std::pair<iterator, bool>{ iterator{root, ref} , true };
     }
 
     /**
@@ -605,23 +610,28 @@ public:
      * @param upper     The upper inclusive bound
      * @return          The iterator
      */
-    range_iterator operator()(const K& lower, const K& upper) noexcept {
-        if (compare(upper, lower)) return range_iterator{};
-        return range_iterator{
-                root,
-                __find_key(root, lower, RIGHT),
-                __find_key(root, upper, LEFT)
-        };
+    iterator operator()(const K& lower, const K& upper) noexcept {
+        if (compare(upper, lower)) return iterator{};
+        // Check that the RIGHT neighbour is not greater than upper
+        node* lower_node = __find_key(root, lower, RIGHT);
+        if (compare(upper, lower_node->data.first)) return iterator{};
+        // Check that the LEFT neighbour is not lower than lower
+        node* upper_node = __find_key(root, upper, LEFT);
+        if (compare(upper_node->data.first, lower)) return iterator{};
+        // Ok
+        return iterator{root, lower_node, upper_node};
     }
-    const_range_iterator operator()(const K& lower, const K& upper) const noexcept {
-        if (compare(upper, lower)) return const_range_iterator{};
-        return const_range_iterator{
-                root,
-                __find_key(root, lower, RIGHT),
-                __find_key(root, upper, LEFT)
-        };
+    const_iterator operator()(const K& lower, const K& upper) const noexcept {
+        if (compare(upper, lower)) return const_iterator{};
+        // Check that the RIGHT neighbour is not greater than upper
+        node* lower_node = __find_key(root, lower, RIGHT);
+        if (compare(upper, lower_node->data.first)) return const_iterator{};
+        // Check that the LEFT neighbour is not lower than lower
+        node* upper_node = __find_key(root, upper, LEFT);
+        if (compare(upper_node->data.first, lower)) return const_iterator{};
+        // Ok
+        return iterator{root, lower_node, upper_node};
     }
-
 
 // ITERATORS
 
@@ -794,7 +804,7 @@ struct bst<K, V, Compare>::node {
     }
 };
 
-// todo : fix iterators
+
 template <typename K, typename V, typename Compare>
 template<typename VT>
 class bst<K, V, Compare>::_iterator {
@@ -803,19 +813,27 @@ class bst<K, V, Compare>::_iterator {
 
     using elem_ref = bst<K, V, Compare>::node*;
     elem_ref root;  // used to inexpensively recover from upper()
-    elem_ref current;
+    elem_ref current{nullptr};
+
+    // For range
+    elem_ref lower{nullptr};
+    elem_ref upper{nullptr};
 
     // Expose private to bst members
     friend bst<K, V, Compare>;
 
-    explicit _iterator(elem_ref root) noexcept: root{root}, current{nullptr} { }
+    explicit _iterator(elem_ref root) noexcept: root{root} { }
     _iterator(elem_ref root, elem_ref start) noexcept: root{root}, current{start} { }
+    _iterator(elem_ref root, elem_ref lower, elem_ref upper) noexcept:
+            root{root}, current{lower}, lower{lower}, upper{upper} {}
+    _iterator(elem_ref root, elem_ref start, elem_ref lower, elem_ref upper) noexcept:
+            root{root}, current{start}, lower{lower}, upper{upper} {}
 
 public:
 
     // https://en.cppreference.com/w/cpp/named_req/Iterator
     // https://internalpointers.com/post/writing-custom-iterators-modern-cpp
-    _iterator() noexcept: root{nullptr}, current{nullptr} { }
+    _iterator() noexcept = default;
 
 
     using iterator_category = std::bidirectional_iterator_tag;
@@ -848,9 +866,14 @@ public:
         std::cout << "++: " << current << std::endl;
 #endif
         if (current == nullptr) {
-            // todo : not sure how to deal with bi-directionality
-            ;  // noop
-        } if (current->right) {
+#ifdef __ITERATOR_RECOVERABLE
+            // !! not sure what is the convention for bi-directionality
+            current = NNL(lower, __left_most(root));
+#endif
+        } else if (current == upper) {
+            // We reached UPPER range boundary
+            current = nullptr;
+        } else if (current->right) {
             // Go down on the right branch
             current = __left_most(current->right);
         } else if (current->parent) {
@@ -883,9 +906,15 @@ public:
 #endif
 
         if (current == nullptr) {
-            // todo : not sure how to deal with bi-directionality
-            // Attempt to recover from end()
-            current = __right_most(root);
+#ifdef __ITERATOR_RECOVERABLE
+            // !! not sure what is the convention for bi-directionality
+            current = NNL(upper, __right_most(root));
+#endif
+        } else if (current == lower) {
+            // We reached LOWER range boundary
+#ifdef __ITERATOR_LOWER_END
+            current = nullptr;
+#endif
         } else if (current->left) {
             current = __right_most(current->left);
         } else if (current->parent) {
@@ -902,6 +931,11 @@ public:
                 tmp = parent;
                 parent = parent->parent;
             }
+#ifdef __ITERATOR_LOWER_END
+            // !! not sure what is the convention for bi-directionality
+            // Cause -- to become end()
+            current = parent;
+#endif
         }
 
         return *this;
@@ -919,65 +953,4 @@ public:
 #endif
         return a.current != b.current;
     }
-};
-
-template <typename K, typename V, typename Compare>
-template<typename VT>
-class bst<K, V, Compare>::_range_iterator: public bst<K, V, Compare>::_iterator<VT>  {
-
-    using elem_ref = bst<K, V, Compare>::node*;
-    using _base = bst<K, V, Compare>::_iterator<VT>;
-
-    elem_ref lower;
-    elem_ref upper;
-
-    // Expose private to bst members
-    friend bst<K, V, Compare>;
-
-    _range_iterator(elem_ref root, elem_ref lower, elem_ref upper) noexcept:
-            _base{root, lower}, lower{lower}, upper{upper} {}
-    _range_iterator(elem_ref root, elem_ref start, elem_ref lower, elem_ref upper) noexcept:
-            _base{root, start}, lower{lower}, upper{upper} {}
-
-public:
-
-    _range_iterator() noexcept: _base{}, lower{nullptr}, upper{nullptr} {}
-    _range_iterator(const _base& src): _base{src}, lower{nullptr}, upper{nullptr} {}
-
-    _range_iterator& operator++() noexcept {
-#ifdef __DEBUG_ITERATOR_2
-        std::cout << "_range_iterator::++: " << current << std::endl;
-#endif
-        if (_base::current == nullptr) {
-            // todo : not sure how to deal with bi-directionality
-            ; // noop
-        } else if (_base::current == upper) {
-            // We reached UPPER range end
-            _base::current = nullptr;
-        } else {
-            _base::operator++();
-        }
-
-        return *this;
-    }
-
-    _range_iterator& operator--() noexcept {
-#ifdef __DEBUG_ITERATOR_2
-        std::cout << "_range_iterator::--: " << current << std::endl;
-#endif
-
-        if (_base::current == nullptr) {
-            // todo : not sure how to deal with bi-directionality
-            // Recover from end()
-            _base::current = upper;
-        } else if (_base::current == lower) {
-            // We reached LOWER range end
-            ; // noop
-        } else {
-            _base::operator--();
-        }
-
-        return *this;
-    }
-
 };
