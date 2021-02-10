@@ -695,64 +695,32 @@ public:
 
 private:
 
-    void __print_tree(std::ostream& os, std::string&& pref, std::string&& pref_rest, node* from) {
-
-        if (from == nullptr) {
-            os << pref << "(empty)\n";
-        } else {
-            os << pref
-               << from
-               << " [depth=" << from->depth
-               << ", parent=" << from->parent << ", left=" << from->left << ", right=" << from->right << "]"
-               << " (" << from->data.first << ":" << from->data.second << ")\n";
-
-            std::stringstream ff_s;
-            ff_s << pref_rest   << "|->L ";
-            std::stringstream fr_s;
-            fr_s << pref_rest   << "|    ";
-            std::stringstream rf_s;
-            rf_s << pref_rest   << "-->R ";
-            std::stringstream rr_s;
-            rr_s << pref_rest   << "     ";
-
-            __print_tree(os, ff_s.str(), fr_s.str(), from->left);
-            __print_tree(os, rf_s.str(), rr_s.str(), from->right);
-        }
-    }
+    void __print_tree(std::ostream& os, std::string&& pref, std::string&& pref_rest, node* from);
 
 public:
 
     /**
      * Prints the tree structure on a std::ostream
      */
-    void print_tree(std::ostream& os) {
-        os << "Size: " << _size << "\n";
-        __print_tree(os, "", "", root);
-        os << std::endl;
-    }
+    void print_tree(std::ostream& os);
 
     /**
      * Prints the tree structure on the std::cout
      */
-    void print_tree() {
-        print_tree(std::cout);
-    }
+    void print_tree();
 
     /**
      * Prints the tree info on a std::ostream
      */
-    void tree_info(std::ostream& os) {
-        os << "bst{size=" << _size << ", root=" << root << "}\n";
-    }
+    void tree_info(std::ostream& os);
 
     /**
      * Prints the tree info on the std::cout
      */
-    void tree_info() {
-        tree_info(std::cout);
-    }
+    void tree_info();
 
 };
+
 
 template <typename K, typename V, typename Compare>
 struct bst<K, V, Compare>::node {
@@ -954,3 +922,51 @@ public:
         return a.current != b.current;
     }
 };
+
+
+template <typename K, typename V, typename Compare>
+void bst<K, V, Compare>::__print_tree(std::ostream& os, std::string&& pref, std::string&& pref_rest, node* from) {
+    if (from == nullptr) {
+        os << pref << "(empty)\n";
+    } else {
+        os << pref
+           << from
+           << " [depth=" << from->depth
+           << ", parent=" << from->parent << ", left=" << from->left << ", right=" << from->right << "]"
+           << " (" << from->data.first << ":" << from->data.second << ")\n";
+
+        std::stringstream ff_s;
+        ff_s << pref_rest   << "|->L ";
+        std::stringstream fr_s;
+        fr_s << pref_rest   << "|    ";
+        std::stringstream rf_s;
+        rf_s << pref_rest   << "-->R ";
+        std::stringstream rr_s;
+        rr_s << pref_rest   << "     ";
+
+        __print_tree(os, ff_s.str(), fr_s.str(), from->left);
+        __print_tree(os, rf_s.str(), rr_s.str(), from->right);
+    }
+}
+
+template <typename K, typename V, typename Compare>
+void bst<K, V, Compare>::print_tree(std::ostream& os) {
+    os << "Size: " << _size << "\n";
+    __print_tree(os, "", "", root);
+    os << std::endl;
+}
+
+template <typename K, typename V, typename Compare>
+void bst<K, V, Compare>::print_tree() {
+    print_tree(std::cout);
+}
+
+template <typename K, typename V, typename Compare>
+void bst<K, V, Compare>::tree_info(std::ostream& os) {
+    os << "bst{size=" << _size << ", root=" << root << "}\n";
+}
+
+template <typename K, typename V, typename Compare>
+void bst<K, V, Compare>::tree_info() {
+    tree_info(std::cout);
+}

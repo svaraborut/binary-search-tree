@@ -14,10 +14,10 @@
 #include <iterator>
 #include <cstdlib>
 
-//#define __TEST_ASSIGN
-//#define __TEST_BASIC
+#define __TEST_ASSIGN
+#define __TEST_BASIC
 #define __TEST_ITER
-//#define __TEST_STOCHASTIC
+#define __TEST_STOCHASTIC
 
 
 #define TEST(name) \
@@ -454,7 +454,7 @@ int main() {
         ASSERT(m.depth() == 4, "10 elements should distribute on a depth 4");
 //        m.print_tree();
 
-        const std::size_t MAP_SIZE = 1000;
+        const std::size_t MAP_SIZE = 10000;
         const std::size_t DEPTH_CHECK = 14; // ~10 is optimum, should be around 11
         const std::size_t ERASE_ATTEMPTS = 250;
         const std::size_t INSERT_ATTEMPTS = 250;
