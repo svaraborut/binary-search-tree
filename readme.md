@@ -1,8 +1,12 @@
-# Advanced Programming Exam 2021
+# Binary Search Tree C++11
+#### Advanced Programming Exam 2021
 
 The project consists of an implementation of a binary search tree. In addition
 to the tasks provided, a naive and experimental self balancing approach has been
 added.
+
+_The implementation is targetted at C++11. Tests and benchmarks uses some advanced
+features therefore build target is C++17._
 
 ## 🤗 Get
 
