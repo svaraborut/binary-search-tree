@@ -4,15 +4,27 @@ The project consists of an implementation of a binary search tree. In addition
 to the tasks provided, a naive and experimental self balancing approach has been
 added.
 
-### 😟 Cheats
+## 🤗 Get
 
-Erase function signature has been modified to return a the quantity of elements
-deleted.
-```c++
-size_type erase(const key_type& x);
+```shell
+git clone https://github.com/svaraborut/binary-search-tree.git
 ```
 
 ## 💹 Benchmarks
+
+Benchmark environment
+```text
+Os:
+    Windows 10 Home - 2004 (19041.746)
+    Windows Feature Experience Pack 120.2212.551.0
+Architecture:
+    x64 but code was built for x32 (except for the 50M test)
+    AMD Ryzen 9 3900X 12-Core
+    64.0 GB RAM
+Build:
+    CMake 3.17.5
+    C++17
+```
 
 Project also includes a complete benchmark suite (see `bench.cpp`) that performs
 comparative tests on `bst<>` against `std::map<>`.
@@ -25,44 +37,58 @@ charts._
 
 #### 🤔 Comparative tests
 
-Originally i was planning to make just this simple tabular print. Unfortunatelly
-the results were not as expected. How is possible that my dummy implementation of
-the `bst<>` is outperforming `std::map` by a 5x 🤔. This calls for further
-investigation.
+Originally i was planning to make just this simple tabular print. Unfortunately
+the results were not as expected. The first result i got, depicted my implementation
+as 5x faster than `std::map`, this of course was not possible. Indeed `std::map` has
+some debug features that slows it down when build target is debug. 😅
+
+Fixing the build environment still the `bst<>` is winning over `std::map`, but
+now just by a slight margin. Ultimately, I was not expecting such performance by
+a fast implementation, this calls for further investigation 🤔. The investigation
+eventually lead to the extension of the benchmark suite... 
 
 ```text
-sizeof(map<>::node_type) 8
-sizeof(std::map<K, V>::value_type) 8
-estimated normalized size= 3999992
+std::map<> performances (64x release build)
+
+sizeof(map<>::node_type) 16
+sizeof(std::map<K, V>::value_type) 16
+estimated normalized size= 79999984
 ------------------------------------------------------------------------------------------------------------------
 | Action        | Took          | total         | pos_rate      | neg_rate      | positive      | negative       |
 ------------------------------------------------------------------------------------------------------------------
-| map<> Insert  | 0.683061      | 500000        | 1             | 0             | 500000        | 0              |
+| map<> Insert  | 1.05782       | 5000000       | 1             | 0             | 5000000       | 0              |
 ------------------------------------------------------------------------------------------------------------------
-| map<> Find    | 0.506285      | 500000        | 1             | 0             | 500000        | 0              |
+| map<> Find    | 0.683921      | 5000000       | 1             | 0             | 5000000       | 0              |
 ------------------------------------------------------------------------------------------------------------------
-| map<> Erase   | 0.912927      | 500000        | 0.065536      | 0.934464      | 32768         | 467232         |
+| map<> Erase   | 0.134039      | 5000000       | 0.0065536     | 0.993446      | 32768         | 4967232        |
 ------------------------------------------------------------------------------------------------------------------
-sizeof(bst<>::node_type) 24
-sizeof(bst<K, V>::value_type) 8
-estimated normalized size= 8000000
+
+bst<> performances (64x release build)
+
+sizeof(bst<>::node_type) 48
+sizeof(bst<K, V>::value_type) 16
+estimated normalized size= 160000000
 ------------------------------------------------------------------------------------------------------------------
 | Action        | Took          | total         | pos_rate      | neg_rate      | positive      | negative       |
 ------------------------------------------------------------------------------------------------------------------
-| bst<> Insert  | 0.146531      | 500000        | 1             | 0             | 500000        | 0              |
+| bst<> Insert  | 0.639946      | 5000000       | 1             | 0             | 5000000       | 0              |
 ------------------------------------------------------------------------------------------------------------------
-| bst<> Find    | 0.123607      | 500000        | 1             | 0             | 500000        | 0              |
+| bst<> Find    | 0.631802      | 5000000       | 1             | 0             | 5000000       | 0              |
 ------------------------------------------------------------------------------------------------------------------
-| bst<> Erase   | 0.0717442     | 500000        | 0.065536      | 0.934464      | 32768         | 467232         |
+| bst<> Erase   | 0.128389      | 5000000       | 0.0065536     | 0.993446      | 32768         | 4967232        |
 ------------------------------------------------------------------------------------------------------------------
 ```
 
 After extending the benchmark suite the following results appear to still confirm
-the original findings. Performances are at a slowly decaying 2x at around 1M entities
-being present in the maps, but performances are getting closer with 1.5x at 5M
-entities.
+the original findings. Performances are higher, but not for so long. At 250k entries
+`std::map<>` catches up the `bst<>` performances.
+
+![alt text](./plot/500K/ops.png)
+
+Eventually surpassing them at around 1.5M entries.
 
 ![alt text](./plot/5M/ops.png)
+
 
 The size of the `bst<>` implementation is 2x compared to `map<>`. This is mainly due
 to `map<>::node` containing only two pointers, whether `bst<>::node` contains three
@@ -89,19 +115,16 @@ After spending more time in investigating the performances than the original
 implementation I came to the conclusion that there is something strange going on.
 Maybe:
 
-- There may be something obvious that I'm missing in the testing
+- There may be something obvious that I'm missing in the testing (as at first glance
+  I missed the debug compilation performance hit on `std::map`)
 - Despite the extensive testing there may still be a bug in the implementation.
 - In `std::map` branch nodes has only `left` and `right` pointers making my
   implementation with `parent` pointer faster when traversing the tree upward. Or
   having the `depth` cached in nodes makes the balancing evaluations faster.
-- I'm using map in such a way that makes it inefficient.
 - `std::map` has a huge penalty when allocating the data having separate leaves to
   store data (eg.: for each insertion has to allocate space for data + for 50% of
   the insertions it has to allocate a new branch node)
 - `std::map` has some other allocation penalties
-- Red-Black trees are slower than the naive implemented approach but are more stable.
-- _Unlikely but possible that my implementation of the map is loosing data somewhere_
-
 
 ## 🧪 Test
 
@@ -113,6 +136,18 @@ Project include a complete test suite (see `test.cpp`). Two types of tests are p
   tests are performed with pseudo random values with many values, to attempt to discover
   errors in the tree structure (aka loosing data and making more evident memory leaks).
 
+Tested on
+```text
+Os:
+    ubuntu 20.04 focal-20210119 (Docker image)
+Architecture:
+    Dell PowerEdge R710
+    2x Intel XEON X5650 2.66GHz Six core
+    48GB Ram
+Build:
+    GNU Make 4.2.1
+    gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+```
 
 ## 🔧 API
 
@@ -276,4 +311,12 @@ Size: 10
           -->R 01330918 [depth=0, parent=01330B58, left=00000000, right=00000000] (10:)
                |->L (empty)
                -->R (empty)
+```
+
+### 😟 Cheats
+
+Erase function signature has been modified to return a the quantity of elements
+deleted.
+```c++
+size_type erase(const key_type& x);
 ```

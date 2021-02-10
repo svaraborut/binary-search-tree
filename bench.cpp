@@ -27,9 +27,6 @@
 #define PROFILE     50000 /* 5000000 */
 #define BATCHES      1000 /* 50000 */
 
-//#define PROFILE     50000000
-//#define BATCHES     500000
-
 
 struct stats {
 
@@ -191,12 +188,17 @@ int main() {
     using V = int;
     using pair = std::pair<K, V>;
 
-    std::cout << "sizeof(int*) " << sizeof(int*) << std::endl;
+//    std::cout << "sizeof(int*) " << sizeof(int*) << std::endl;
 
     // Benchmark std::map
 #ifdef __BENCHMARK_MAP
     {
-        std::srand(SEED);
+        std::default_random_engine generator{SEED};
+        std::uniform_int_distribution<int> distribution{
+                -INSERT,
+                +INSERT
+        };
+
         std::map<K, V> _map;
 
         // Estimate size
@@ -208,14 +210,18 @@ int main() {
 
         stats _insert{"map<> Insert", INSERT};
         for (std::size_t i = 0; i < INSERT; i++) {
-            _map.insert(pair{std::rand(), 0});
-            _insert.positive++;
+            if (_map.insert(pair{distribution(generator), 0}).second) {
+                _insert.positive++;
+            } else {
+                _insert.negative++;
+            }
         }
         _insert.done();
+        std::cout << "inserted=" << _map.size() << std::endl;
 
         stats _find{"map<> Find", FIND};
         for (std::size_t i = 0; i < FIND; i++) {
-            if (_map.find(std::rand()) != _map.end()) {
+            if (_map.find(distribution(generator)) != _map.end()) {
                 _find.positive++;
             } else {
                 _find.negative++;
@@ -225,7 +231,7 @@ int main() {
 
         stats _removes{"map<> Erase", REMOVES};
         for (std::size_t j = 0; j < REMOVES; j++) {
-            if (_map.erase(std::rand()) > 0) {
+            if (_map.erase(distribution(generator)) > 0) {
                 _removes.positive++;
             } else {
                 _removes.negative++;
@@ -240,7 +246,11 @@ int main() {
 #ifdef __BENCHMARK_BSD
     // Benchmark bst
     {
-        std::srand(SEED);
+        std::default_random_engine generator{SEED};
+        std::uniform_int_distribution<int> distribution{
+                -INSERT,
+                +INSERT
+        };
         bst<K, V> _map;
 
         // Estimate size
@@ -250,14 +260,18 @@ int main() {
 
         stats _insert{"bst<> Insert", INSERT};
         for (std::size_t i = 0; i < INSERT; i++) {
-            _map.insert(pair{std::rand(), 0});
-            _insert.positive++;
+            if (_map.insert(pair{distribution(generator), 0}).second) {
+                _insert.positive++;
+            } else {
+                _insert.negative++;
+            }
         }
         _insert.done();
+        std::cout << "inserted=" << _map.size() << std::endl;
 
         stats _find{"bst<> Find", FIND};
         for (std::size_t i = 0; i < FIND; i++) {
-            if (_map.find(std::rand()) != _map.end()) {
+            if (_map.find(distribution(generator)) != _map.end()) {
                 _find.positive++;
             } else {
                 _find.negative++;
@@ -267,7 +281,7 @@ int main() {
 
         stats _removes{"bst<> Erase", REMOVES};
         for (std::size_t j = 0; j < REMOVES; j++) {
-            if (_map.erase(std::rand()) > 0) {
+            if (_map.erase(distribution(generator)) > 0) {
                 _removes.positive++;
             } else {
                 _removes.negative++;
@@ -292,6 +306,7 @@ int main() {
                 profiler{{ "action", "depth", "size", "hit", "miss" }};
 
         // Profile insert
+        std::cout << "Profiling map Insert + Erase Hit" << std::endl;
         for (std::size_t j = 0; j < PROFILE; j += BATCHES) {
             rnd_t _start = distribution(generator);
             std::size_t hit{0}, miss{0};
@@ -316,10 +331,11 @@ int main() {
                 _map.insert(pair{distribution(generator), 0});
             }
 
-            std::cout << "- " << j << std::endl;
+//            std::cout << "- " << j << std::endl;
         }
 
         // Batch profilation
+        std::cout << "Profiling map Erase + Find" << std::endl;
         _map.clear();
         for (std::size_t j = 0; j < PROFILE; j += BATCHES) {
             // Fill up a batch
@@ -351,7 +367,7 @@ int main() {
             }
             profiler.end(_map.size(), Find, 0, map_size(_map), hit, miss);
 
-            std::cout << "- " << j << std::endl;
+//            std::cout << "- " << j << std::endl;
         }
 
         // Dump
@@ -373,6 +389,7 @@ int main() {
                 profiler{{ "action", "depth", "size", "hit", "miss" }};
 
         // Profile insert
+        std::cout << "Profiling bst Insert + Erase Hit" << std::endl;
         for (std::size_t j = 0; j < PROFILE; j += BATCHES) {
             rnd_t _start = distribution(generator);
             std::size_t hit{0}, miss{0};
@@ -397,10 +414,11 @@ int main() {
                 _map.insert(pair{distribution(generator), 0});
             }
 
-            std::cout << "- " << j << std::endl;
+//            std::cout << "- " << j << std::endl;
         }
 
         // Batch profilation
+        std::cout << "Profiling bst Erase + Find" << std::endl;
         _map.clear();
         for (std::size_t j = 0; j < PROFILE; j += BATCHES) {
             // Fill up a batch
@@ -432,7 +450,7 @@ int main() {
             }
             profiler.end(_map.size(), Find, _map.depth(), bst_size(_map), hit, miss);
 
-            std::cout << "- " << j << std::endl;
+//            std::cout << "- " << j << std::endl;
         }
 
         // Dump
