@@ -13,10 +13,10 @@
 #include "bst.cpp"
 
 
-//#define __BENCHMARK_MAP
-//#define __BENCHMARK_BSD
+#define __BENCHMARK_MAP
+#define __BENCHMARK_BSD
 //#define __PROFILE_MAP
-#define __PROFILE_BSD
+//#define __PROFILE_BSD
 //#define __PROFILE_DEPTH
 
 #define INSERT      500000 /* 5000000 */
@@ -24,12 +24,11 @@
 #define REMOVES     INSERT
 #define SEED        0x123456ul /* 0x654321ul */
 
-//#define PROFILE     50000 /* 5000000 */
-//#define BATCHES      1000 /* 50000 */
+#define PROFILE     50000 /* 5000000 */
+#define BATCHES      1000 /* 50000 */
 
-#define PROFILE     50000000
-#define BATCHES     500000
-
+//#define PROFILE     50000000
+//#define BATCHES     500000
 
 
 struct stats {
@@ -361,7 +360,7 @@ int main() {
     {
         using rnd_t = unsigned int;
         std::default_random_engine generator;
-        std::uniform_int_distribution<rnd_t> distribution(0,std::numeric_limits<rnd_t>::max());
+        std::uniform_int_distribution<rnd_t> distribution{0,std::numeric_limits<rnd_t>::max()};
 
 
         bst<K, V> _map;

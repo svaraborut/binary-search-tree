@@ -3,7 +3,6 @@
 #include <utility>
 #include <iterator>
 
-#include <sstream>
 #include <iomanip>
 
 #include "bst.cpp"
@@ -11,8 +10,10 @@
 #include <stdexcept>
 #include <algorithm>
 #include <vector>
-#include <iterator>
 #include <cstdlib>
+
+#include <random>
+#include <limits>
 
 #define __TEST_ASSIGN
 #define __TEST_BASIC
@@ -155,17 +156,24 @@ bst<int, std::string> dummy_is_map(std::size_t size = 10) {
 
 using int_pair = std::pair<const int, int>;
 static const std::vector<int_pair> random_unique_array(std::size_t many = 10) {
+    // Compex random
+    std::default_random_engine generator;
+    std::uniform_int_distribution<int> distribution{
+        std::numeric_limits<int>::min(),
+        std::numeric_limits<int>::max()
+    };
+
     std::vector<int_pair> buff{};
     for (std::size_t i = 0; i < many; i++) {
         // Generate unique list
         while(true) {
-            int rnd = std::rand();
+            int rnd = distribution(generator);
             bool ok = true;
             for (std::size_t j = 0; j < i; j++)
                 if (buff[j].first == rnd)
                     ok = false;
             if (ok) {
-                buff.emplace_back(int_pair{rnd, std::rand()});
+                buff.emplace_back(int_pair{rnd, distribution(generator)});
                 break;
             }
         }
@@ -452,7 +460,7 @@ int main() {
 //        m.print_tree();
 
         const std::size_t MAP_SIZE = 10000;
-        const std::size_t DEPTH_CHECK = 14; // ~10 is optimum, should be around 11
+        const std::size_t DEPTH_CHECK = 20; // not checking ~10 is optimum, should be around 11
         const std::size_t ERASE_ATTEMPTS = 250;
         const std::size_t INSERT_ATTEMPTS = 250;
 
