@@ -8,10 +8,10 @@ CXXFLAGS = -Wall -Wextra -Werror -g -std=c++17
 all: main test bench
 
 main: main.cpp
-    $(CXX) $< -o $@ $(CXXFLAGS)
+	$(CXX) $< -o $@ $(CXXFLAGS)
 
 test: test.cpp
-    $(CXX) $< -o $@ $(CXXFLAGS)
+	$(CXX) $< -o $@ $(CXXFLAGS)
 
 bench: bench.cpp
-    $(CXX) $< -o $@ $(CXXFLAGS)
+	$(CXX) $< -o $@ $(CXXFLAGS)
