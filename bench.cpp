@@ -77,7 +77,7 @@ struct timing_bundle {
     // t = time, ...
     std::vector<std::string> titles;
     std::vector<point_t> points;
-    size_t last_lower;
+    size_t last_lower{0};
     std::chrono::high_resolution_clock::time_point last_begin;
 
     explicit timing_bundle(std::vector<std::string>&& titles): titles{titles} {}
@@ -125,7 +125,10 @@ void print_table(Types&&... args) {
 
     // print: ----------------
     auto line = [WIDTH](auto ROW) {
-        for (auto&& i : ROW) std::cout << std::setw(WIDTH) << std::setfill('-') << "";
+        for (auto&& i : ROW) {
+            (void)i;
+            std::cout << std::setw(WIDTH) << std::setfill('-') << "";
+        }
         std::cout << "--" << std::endl;
     };
     // Row
@@ -168,7 +171,7 @@ std::size_t map_size(Map map, std::size_t size_over = 0) {
     const std::size_t LEAFS = size_over > 0 ? size_over : map.size();
     const std::size_t NODES = 2 * LEAFS - 1;
     const std::size_t BRANCHES = NODES - LEAFS;
-    return BRANCHES * sizeof(Map::node_type);
+    return BRANCHES * sizeof(typename Map::node_type);
             // + LEAFS * sizeof(Map::value_type);
 }
 
