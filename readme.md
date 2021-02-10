@@ -8,6 +8,15 @@ added.
 
 ```shell
 git clone https://github.com/svaraborut/binary-search-tree.git
+
+# Build
+make
+
+# Test
+./test
+
+# Benchmark
+./bench
 ```
 
 ## 💹 Benchmarks
