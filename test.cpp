@@ -155,9 +155,9 @@ bst<int, std::string> dummy_is_map(std::size_t size = 10) {
 }
 
 using int_pair = std::pair<const int, int>;
-static const std::vector<int_pair> random_unique_array(std::size_t many = 10) {
+static const std::vector<int_pair> random_unique_array(std::size_t many = 10, unsigned int seed = 0) {
     // Compex random
-    std::default_random_engine generator;
+    std::default_random_engine generator{seed};
     std::uniform_int_distribution<int> distribution{
         std::numeric_limits<int>::min(),
         std::numeric_limits<int>::max()
@@ -474,11 +474,12 @@ int main() {
             0x123465ul,
         };
 
+        ASSERT(true, "Test may take some time...");
         for (unsigned int SD : seeds) {
             // Populate map
             // Seed to be deterministic
             std::srand(SD);
-            const auto v = random_unique_array(MAP_SIZE);
+            const auto v = random_unique_array(MAP_SIZE, SD);
             map x = dummy_ii_map(v);
 //            print("MAP DEPTH= ", x.depth());
             ASSERT_QUIET(x.size() == MAP_SIZE, "Size should be wrong map size");
@@ -557,6 +558,7 @@ int main() {
             ASSERT_QUIET(helper::is_vector_key_greater(lower.first, slc), "Slice should be >= than lower");
             ASSERT_QUIET(helper::is_vector_key_lower(upper.first, slc), "Slice should be <= than upper");
 
+            ASSERT(true, "Tested once");
         }
 
         ASSERT(true, "Map should work");
