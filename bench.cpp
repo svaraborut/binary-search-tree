@@ -104,7 +104,6 @@ struct timing_bundle {
         os << "\n";
 
         // Rows
-        std::size_t i = 0;
         for (point_t p : points) {
             (..., (os << (I == 0 ? "" : ",") << std::get<I>(p)));
             os << "\n";
@@ -177,7 +176,8 @@ std::size_t map_size(Map map, std::size_t size_over = 0) {
 template<typename Bst>
 std::size_t bst_size(Bst bst, std::size_t size_over = 0) {
     // Value is contained within node
-    return (size_over > 0 ? size_over : bst.size()) * (sizeof(Bst::node_type) - sizeof(Bst::value_type));
+    return (size_over > 0 ? size_over : bst.size())
+        * (sizeof(typename Bst::node_type)- sizeof(typename Bst::value_type));
 }
 
 

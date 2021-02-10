@@ -71,13 +71,18 @@ class bst {
 
 // DEFINITIONS
 
+public:
+
+    using size_type = std::size_t;
+
+private:
+
     Compare compare;
 
     struct node;
 
     using node_pointer = node*;
     using pair_type = std::pair<const K, V>;
-    using size_type = std::size_t;
 
     node* root{nullptr};
     size_type _size{0};
@@ -400,7 +405,6 @@ public:
     using key_type = K;
     using mapped_type = V;
     using value_type = pair_type;
-    using size_type = std::size_t;
     using key_compare = Compare;
 
     using iterator = _iterator<pair_type>;
@@ -733,8 +737,8 @@ struct bst<K, V, Compare>::node {
 
     explicit node(node* parent, std::pair<const K, V>& pair) noexcept:
             parent{parent},
-            data{pair},
-            depth{0}
+            depth{0},
+            data{pair}
     {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Allocated: " << pair.first << std::endl;
@@ -742,8 +746,8 @@ struct bst<K, V, Compare>::node {
     };
     explicit node(node* parent, std::pair<const K, V>&& pair) noexcept:
             parent{parent},
-            data{std::move(pair)},
-            depth{0}
+            depth{0},
+            data{std::move(pair)}
     {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Allocated: " << pair.first << std::endl;
@@ -754,8 +758,8 @@ struct bst<K, V, Compare>::node {
             parent{src.parent},
             left{src.left == nullptr ? nullptr : new node{*src.left}},
             right{src.right == nullptr ? nullptr : new node{*src.right}},
-            data{src.data},
-            depth{src.depth}
+            depth{src.depth},
+            data{src.data}
     {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Allocated: copy" << std::endl;

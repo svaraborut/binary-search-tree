@@ -148,7 +148,7 @@ struct bstHelpers {
 bst<int, std::string> dummy_is_map(std::size_t size = 10) {
     using map = bst<int, std::string>;
     map t{};
-    for (int i = 1; i <= size; i++)
+    for (auto i = 1ul; i <= size; i++)
         t.insert(map::value_type{i, map::value_type::second_type{}});
     return t;
 }
@@ -210,7 +210,6 @@ int main() {
         using pair = std::pair<K, V>;
         using map = bst<K, V>;
         using helper = bstHelpers<K, V>;
-        using vector = helper::vector;
 
         // Create
         map map1 = dummy_is_map(5);
@@ -273,7 +272,6 @@ int main() {
         using pair = std::pair<K, V>;
         using map = bst<K, V>;
         using helper = bstHelpers<K, V>;
-        using vector = helper::vector;
         using helper = bstHelpers<K, V>;
 
         map m = map{};
@@ -347,10 +345,9 @@ int main() {
     TEST("Iterable")
     {
         using V = std::string;
-        using pair = std::pair<K, V>;
+//        using pair = std::pair<K, V>;
         using map = bst<K, V>;
-        using helper = bstHelpers<K, V>;
-        using vector = helper::vector;
+//        using helper = bstHelpers<K, V>;
 
         map n = map{};
 
@@ -393,7 +390,7 @@ int main() {
         --it;
         K _3 = it->first;
 
-        map::iterator _i = n.end();
+//        map::iterator _i = n.end();
 
         ASSERT(_1 != _2, "After iterator++ key should be different");
         ASSERT(_2 != _3, "After iterator-- key should be different");
@@ -424,7 +421,7 @@ int main() {
         _range = n(2, 4);
         ASSERT(count_iter(_range, n.end()) == 0, "Range in gap should be empty");
 
-        const auto _l = 4ul, _u = 7ul;
+        const auto _l = 4l, _u = 7l;
         _range = n(_l, _u);
         bool _cond = true;
         while((++_range) != m.end()) {
@@ -441,7 +438,7 @@ int main() {
     TEST("Stochastic test")
     {
         using V = int;
-        using pair = std::pair<K, V>;
+//        using pair = std::pair<K, V>;
         using map = bst<K, V>;
         using helper = bstHelpers<K, V>;
         using vector = helper::vector;
