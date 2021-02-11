@@ -2,6 +2,8 @@
 #include <iostream>
 #include <utility>
 #include <iterator>
+#include <string>
+#include <cmath>
 
 #include <iomanip>
 
@@ -15,20 +17,17 @@
 #include <random>
 #include <limits>
 
-#define __TEST_ASSIGN
-#define __TEST_BASIC
-#define __TEST_ITER
-#define __TEST_STOCHASTIC
 
-
-#define TEST(name) \
-    std::cout << "TEST " << (name) << "\n"; \
-    try {
+#define TEST(cond, name) \
+    if (cond) {          \
+        std::cout << "TEST " << (name) << "\n"; \
+        try {
 
 #define END_TEST() \
-    std::cout << "+++ ALL OK"; } \
-    catch (const std::exception& e) { std::cout << "--- ERROR " << e.what(); }   \
-    std::cout << std::endl;
+        std::cout << "+++ ALL OK"; } \
+        catch (const std::exception& e) { std::cout << "--- ERROR " << e.what(); }   \
+        std::cout << std::endl;      \
+    }
 
 //#define ASSERT(cond, ex) if (!(cond)) throw std::logic_error(ex);
 #define ASSERT(cond, ex) \
@@ -204,15 +203,77 @@ unsigned int count_iter(Iter begin, Iter end) {
     return c;
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     std::cout << "Testing bst<K, V>" << std::endl;
 
     using K = int;
 
+    // PARSE ARGS
+
+    bool _test_assign{false};
+    bool _test_basic{false};
+    bool _test_iter{false};
+    bool _test_stochastic{false};
+    std::size_t _test_stochastic_map_size = 1000;
+
+    if (argc > 1) {
+
+        if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+            std::cout
+                << "Test usage"
+                << "\n"
+                << "\nRun without parameters to perform all tests or:"
+                << "\n-a\tto test constructors and assignment"
+                << "\n-b\tfor basic functional test"
+                << "\n-i\tto test iterators and iterable results of functions"
+                << "\n-s\tto perform a stochastic test (random insert, erase)"
+                << "\n"
+                << "\n--ms\tto define the map size to be reached in stochastic tests"
+                << std::endl;
+            return 0;
+        } else {
+
+            for (int i = 1; i < argc; i++) {
+                char *arg = argv[i];
+                if (arg[0] != '-') continue;
+
+                if (strlen(arg) == 2) {
+                    switch (arg[1]) {
+                        case 'a':
+                            _test_assign = true;
+                            break;
+                        case 'b':
+                            _test_basic = true;
+                            break;
+                        case 'i':
+                            _test_iter = true;
+                            break;
+                        case 's':
+                            _test_stochastic = true;
+                            break;
+                    }
+                }
+
+                if (strcmp(arg, "--ms") == 0) {
+                    i++;
+                    _test_stochastic_map_size = std::stoi(argv[i]);
+                }
+            }
+
+        }
+
+    }
+
+    if (!_test_assign && !_test_basic && !_test_iter && !_test_stochastic) {
+        _test_assign = true;
+        _test_basic = true;
+        _test_iter = true;
+        _test_stochastic = true;
+    }
+
     // TEST
 
-#ifdef __TEST_ASSIGN
-    TEST("Assignment / Constructor")
+    TEST(_test_assign, "Assignment / Constructor")
     {
         using V = std::string;
         using pair = std::pair<K, V>;
@@ -271,10 +332,8 @@ int main() {
 
     }
     END_TEST()
-#endif
 
-#ifdef __TEST_BASIC
-    TEST("Basic")
+    TEST(_test_basic, "Basic")
     {
         using V = int;
         using pair = std::pair<K, V>;
@@ -347,10 +406,8 @@ int main() {
 
     }
     END_TEST()
-#endif
 
-#ifdef __TEST_ITER
-    TEST("Iterable")
+    TEST(_test_iter, "Iterable")
     {
         using V = std::string;
 //        using pair = std::pair<K, V>;
@@ -440,10 +497,8 @@ int main() {
 
     }
     END_TEST()
-#endif
 
-#ifdef __TEST_STOCHASTIC
-    TEST("Stochastic test")
+    TEST(_test_stochastic, "Stochastic test")
     {
         using V = int;
 //        using pair = std::pair<K, V>;
@@ -459,7 +514,7 @@ int main() {
         ASSERT(m.depth() == 4, "10 elements should distribute on a depth 4");
 //        m.print_tree();
 
-        const std::size_t MAP_SIZE = 1000;
+        const std::size_t MAP_SIZE = _test_stochastic_map_size;
         const std::size_t DEPTH_CHECK = 20; // not checking ~10 is optimum, should be around 11
         const std::size_t ERASE_ATTEMPTS = 250;
         const std::size_t INSERT_ATTEMPTS = 250;
@@ -483,7 +538,8 @@ int main() {
             map x = dummy_ii_map(v);
 //            print("MAP DEPTH= ", x.depth());
             ASSERT_QUIET(x.size() == MAP_SIZE, "Size should be wrong map size");
-            ASSERT_QUIET(x.depth() <= DEPTH_CHECK, "Elements should distribute on a max depth");
+            auto _max_depth = (unsigned char)(std::log2(MAP_SIZE) * 1.5);
+            ASSERT_QUIET(x.depth() <= _max_depth, "Elements should distribute on a max depth");
 //        x.print_tree();
 
             using v_pair = std::pair<int, int>;
@@ -565,7 +621,6 @@ int main() {
 
     }
     END_TEST()
-#endif
 
     return 0;
 }
