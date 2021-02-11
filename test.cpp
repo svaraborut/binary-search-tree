@@ -3,6 +3,7 @@
 #include <utility>
 #include <iterator>
 #include <string>
+#include <cstring>
 #include <cmath>
 
 #include <iomanip>
@@ -218,7 +219,7 @@ int main(int argc, char *argv[]) {
 
     if (argc > 1) {
 
-        if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+        if (argc == 2 && std::strcmp(argv[1], "--help") == 0) {
             std::cout
                 << "Test usage"
                 << "\n"
@@ -237,7 +238,7 @@ int main(int argc, char *argv[]) {
                 char *arg = argv[i];
                 if (arg[0] != '-') continue;
 
-                if (strlen(arg) == 2) {
+                if (std::strlen(arg) == 2) {
                     switch (arg[1]) {
                         case 'a':
                             _test_assign = true;
@@ -254,7 +255,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                if (strcmp(arg, "--ms") == 0) {
+                if (std::strcmp(arg, "--ms") == 0) {
                     i++;
                     _test_stochastic_map_size = std::stoi(argv[i]);
                 }
@@ -515,7 +516,6 @@ int main(int argc, char *argv[]) {
 //        m.print_tree();
 
         const std::size_t MAP_SIZE = _test_stochastic_map_size;
-        const std::size_t DEPTH_CHECK = 20; // not checking ~10 is optimum, should be around 11
         const std::size_t ERASE_ATTEMPTS = 250;
         const std::size_t INSERT_ATTEMPTS = 250;
 

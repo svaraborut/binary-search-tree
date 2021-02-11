@@ -167,6 +167,15 @@ Build:
     gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
 ```
 
+#### 🐳 Docker test environment
+
+```shell
+FROM ubuntu:20.04
+
+RUN apt-get -y update
+RUN apt-get -y install g++ build-essential git nano
+```
+
 ## 🔧 API
 
 ##### 🙌🏼 Iteration constructor
