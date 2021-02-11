@@ -420,14 +420,23 @@ public:
         root = src.root == nullptr ? nullptr : new node{*src.root};
         _size = src._size;
     }
-    bst& operator=(bst const& src) = default;
+    bst& operator=(bst const& src) {
+        // Self assign guard
+        if (this == &src) return *this;
+        // Assignment copy
+        delete root;
+        root = src.root == nullptr ? nullptr : new node{*src.root};
+        _size = src._size;
+        return *this;
+    };
 
     bst(bst&& src) noexcept:
-            root{std::exchange(src.root, nullptr)},
-            _size{std::exchange(src._size, 0)}
-    { /* Swap tree with the other class */ }
+        root{std::exchange(src.root, nullptr)},
+        _size{std::exchange(src._size, 0)}
+    { /* steal the tree */ }
 
     bst& operator=(bst&& src) noexcept {
+        delete root;
         root = std::exchange(src.root, nullptr);
         _size = std::exchange(src._size, 0);
         return *this;
@@ -522,8 +531,9 @@ public:
      * Removes all the values from the map
      */
     void clear() noexcept { // ✓ testing
-        _size = 0;
+        delete root;
         root = nullptr;
+        _size = 0;
     }
 
     /**
