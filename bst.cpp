@@ -67,7 +67,7 @@
 
 
 template <typename K, typename V>
-struct node;
+struct _node;
 
 template<typename elem_type, typename VT>
 class _iterator;
@@ -80,7 +80,7 @@ class bst {
 
     Compare compare;
 
-    using node = node<K, V>;
+    using node = _node<K, V>;
     using pair_type = std::pair<const K, V>;
 
     node* root{nullptr};
@@ -733,15 +733,15 @@ public:
 
 
 template <typename K, typename V>
-struct node {
+struct _node {
 
-    node* parent{nullptr};
-    node* left{nullptr};
-    node* right{nullptr};
-    unsigned char depth;
+    _node* parent{nullptr};
+    _node* left{nullptr};
+    _node* right{nullptr};
     std::pair<const K, V> data;
+    unsigned char depth;
 
-    explicit node(node* parent, std::pair<const K, V>& pair) noexcept:
+    explicit _node(_node* parent, std::pair<const K, V>& pair) noexcept:
             parent{parent},
             depth{0},
             data{pair}
@@ -750,7 +750,7 @@ struct node {
         std::cout << "Allocated: " << pair.first << std::endl;
 #endif
     };
-    explicit node(node* parent, std::pair<const K, V>&& pair) noexcept:
+    explicit _node(_node* parent, std::pair<const K, V>&& pair) noexcept:
             parent{parent},
             depth{0},
             data{std::move(pair)}
@@ -760,10 +760,10 @@ struct node {
 #endif
     };
 
-    explicit node(node& src):
+    explicit _node(_node& src):
             parent{src.parent},
-            left{src.left == nullptr ? nullptr : new node{*src.left}},
-            right{src.right == nullptr ? nullptr : new node{*src.right}},
+            left{src.left == nullptr ? nullptr : new _node{*src.left}},
+            right{src.right == nullptr ? nullptr : new _node{*src.right}},
             depth{src.depth},
             data{src.data}
     {
@@ -772,7 +772,7 @@ struct node {
 #endif
     }
 
-    ~node() {
+    ~_node() {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Destroying: " << data.first << std::endl;
 #endif
