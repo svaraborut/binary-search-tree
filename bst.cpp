@@ -18,8 +18,8 @@
     << " [parent=" << node->parent << ", l=" << node->left << ", r=" << node->right << "]" << std::endl
 
 // Helper functions
-#define MAX(a, b) (a) > (b) ? (a) : (b)
-#define MIN(a, b) (a) < (b) ? (a) : (b)
+#define MAX(a, b) (a) < (b) ? (b) : (a)
+#define MIN(a, b) (b) < (a) ? (b) : (a)
 #define NNL(_1, _2) (_1) != nullptr ? (_1) : (_2)
 
 // Build a conditional block for comparison
@@ -66,31 +66,27 @@
 #define DETACH(node) (node)->left = nullptr; (node)->right = nullptr;
 
 
-template <typename K, typename V, typename Compare = std::less<K>>
+template <typename K, typename V>
+struct node;
+
+template<typename elem_type, typename VT>
+class _iterator;
+
+
+template <typename K, typename V, typename Compare = std::less<K>, typename size_type = std::size_t>
 class bst {
 
 // DEFINITIONS
 
-public:
-
-    using size_type = std::size_t;
-
-private:
-
     Compare compare;
 
-    struct node;
-
-    using node_pointer = node*;
+    using node = node<K, V>;
     using pair_type = std::pair<const K, V>;
 
     node* root{nullptr};
     size_type _size{0};
 
 // INTERNAL
-
-    template<typename value_type>
-    class _iterator;
 
     // INNER
     enum find_method{EXACT, LEFT, RIGHT};
@@ -105,7 +101,7 @@ private:
      * @return          the found node or nullptr
      */
     node* __find_key(node* current, const K& k, const find_method method) noexcept {
-        node_pointer lastl{nullptr}, lastr{nullptr}, found{nullptr};
+        node *lastl{nullptr}, *lastr{nullptr}, *found{nullptr};
 
         while (current != nullptr && found == nullptr) {
             TRIPLE_COMPARE(compare, k, current->data.first,
@@ -407,8 +403,8 @@ public:
     using value_type = pair_type;
     using key_compare = Compare;
 
-    using iterator = _iterator<pair_type>;
-    using const_iterator = _iterator<const pair_type>;
+    using iterator = _iterator<node, pair_type>;
+    using const_iterator = _iterator<node, const pair_type>;
     using node_type = node;
 
     // RAII & Copy and move
@@ -586,7 +582,7 @@ public:
      * Returns the current depth of the map O(1)
      * @return      The depth of the map
      */
-    unsigned int depth() noexcept {
+    unsigned char depth() noexcept {
         return root ? root->depth + 1: 0;
     }
 
@@ -736,13 +732,13 @@ public:
 };
 
 
-template <typename K, typename V, typename Compare>
-struct bst<K, V, Compare>::node {
+template <typename K, typename V>
+struct node {
 
     node* parent{nullptr};
     node* left{nullptr};
     node* right{nullptr};
-    unsigned int depth;
+    unsigned char depth;
     std::pair<const K, V> data;
 
     explicit node(node* parent, std::pair<const K, V>& pair) noexcept:
@@ -787,36 +783,40 @@ struct bst<K, V, Compare>::node {
 };
 
 
-template <typename K, typename V, typename Compare>
-template<typename VT>
-class bst<K, V, Compare>::_iterator {
+template<typename elem_type, typename VT>
+class _iterator {
 
-//protected:
-
-    using elem_ref = bst<K, V, Compare>::node*;
-    elem_ref root;  // used to inexpensively recover from upper()
-    elem_ref current{nullptr};
+    using elem_ptr = elem_type*;
+    elem_ptr root{nullptr};  // used to inexpensively recover from upper()
+    elem_ptr current{nullptr};
 
     // For range
-    elem_ref lower{nullptr};
-    elem_ref upper{nullptr};
+    elem_ptr lower{nullptr};
+    elem_ptr upper{nullptr};
 
-    // Expose private to bst members
-    friend bst<K, V, Compare>;
+    // Helper methods
 
-    explicit _iterator(elem_ref root) noexcept: root{root} { }
-    _iterator(elem_ref root, elem_ref start) noexcept: root{root}, current{start} { }
-    _iterator(elem_ref root, elem_ref lower, elem_ref upper) noexcept:
-            root{root}, current{lower}, lower{lower}, upper{upper} {}
-    _iterator(elem_ref root, elem_ref start, elem_ref lower, elem_ref upper) noexcept:
-            root{root}, current{start}, lower{lower}, upper{upper} {}
+    static elem_type* __left_most(elem_type* n) noexcept {
+        while (n && n->left) { n = n->left; }
+        return n;
+    }
+
+    static elem_type* __right_most(elem_type* n) noexcept {
+        while (n && n->right) { n = n->right; }
+        return n;
+    }
 
 public:
 
     // https://en.cppreference.com/w/cpp/named_req/Iterator
     // https://internalpointers.com/post/writing-custom-iterators-modern-cpp
-    _iterator() noexcept = default;
-
+    explicit _iterator() noexcept {}
+    explicit _iterator(elem_ptr root) noexcept: root{root} { }
+    _iterator(elem_ptr root, elem_ptr start) noexcept: root{root}, current{start} { }
+    _iterator(elem_ptr root, elem_ptr lower, elem_ptr upper) noexcept:
+            root{root}, current{lower}, lower{lower}, upper{upper} {}
+    _iterator(elem_ptr root, elem_ptr current, elem_ptr lower, elem_ptr upper) noexcept:
+            root{root}, current{current}, lower{lower}, upper{upper} {}
 
     using iterator_category = std::bidirectional_iterator_tag;
     using difference_type = std::ptrdiff_t;
@@ -840,7 +840,7 @@ public:
     }
 
     pointer operator->() {
-        return &**this;
+        return &current->data;
     }
 
     _iterator& operator++() noexcept {
@@ -862,7 +862,7 @@ public:
             // Nothing left below
             // Traverse the parent tree upward till there is a parent of whom the
             // child was a left-child, otherwise we reached the right-most branch
-            elem_ref tmp = current;
+            elem_ptr tmp = current;
             current = current->parent;
             // Traverse
             while (current != nullptr) {
@@ -904,7 +904,7 @@ public:
             // Traverse up to a node of whom current is a right-child, else
             // we reached the left-most branch. -- will do nothing from here
             // (will remain on begin() pointer)
-            elem_ref tmp = current, parent = current->parent;
+            elem_ptr tmp = current, parent = current->parent;
             while (parent != nullptr) {
                 if (parent->right == tmp) {
                     current = parent;
@@ -938,8 +938,8 @@ public:
 };
 
 
-template <typename K, typename V, typename Compare>
-void bst<K, V, Compare>::__print_tree(std::ostream& os, std::string&& pref, std::string&& pref_rest, node* from) {
+template <typename K, typename V, typename Compare, typename Size>
+void bst<K, V, Compare, Size>::__print_tree(std::ostream& os, std::string&& pref, std::string&& pref_rest, node* from) {
     if (from == nullptr) {
         os << pref << "(empty)\n";
     } else {
@@ -963,24 +963,24 @@ void bst<K, V, Compare>::__print_tree(std::ostream& os, std::string&& pref, std:
     }
 }
 
-template <typename K, typename V, typename Compare>
-void bst<K, V, Compare>::print_tree(std::ostream& os) {
+template <typename K, typename V, typename Compare, typename Size>
+void bst<K, V, Compare, Size>::print_tree(std::ostream& os) {
     os << "Size: " << _size << "\n";
     __print_tree(os, "", "", root);
     os << std::endl;
 }
 
-template <typename K, typename V, typename Compare>
-void bst<K, V, Compare>::print_tree() {
+template <typename K, typename V, typename Compare, typename Size>
+void bst<K, V, Compare, Size>::print_tree() {
     print_tree(std::cout);
 }
 
-template <typename K, typename V, typename Compare>
-void bst<K, V, Compare>::tree_info(std::ostream& os) {
+template <typename K, typename V, typename Compare, typename Size>
+void bst<K, V, Compare, Size>::tree_info(std::ostream& os) {
     os << "bst{size=" << _size << ", root=" << root << "}\n";
 }
 
-template <typename K, typename V, typename Compare>
-void bst<K, V, Compare>::tree_info() {
+template <typename K, typename V, typename Compare, typename Size>
+void bst<K, V, Compare, Size>::tree_info() {
     tree_info(std::cout);
 }

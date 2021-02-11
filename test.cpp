@@ -516,8 +516,8 @@ int main(int argc, char *argv[]) {
 //        m.print_tree();
 
         const std::size_t MAP_SIZE = _test_stochastic_map_size;
-        const std::size_t ERASE_ATTEMPTS = 250;
-        const std::size_t INSERT_ATTEMPTS = 250;
+        const std::size_t ERASE_ATTEMPTS = MAP_SIZE;
+        const std::size_t INSERT_ATTEMPTS = MAP_SIZE;
 
         const unsigned int seeds[] = {
             0x123456ul,
@@ -561,6 +561,7 @@ int main(int argc, char *argv[]) {
 //            print("@@ ", x.size());
 
             for (unsigned int i = 0; i < ERASE_ATTEMPTS; i++) {
+                if (srt.empty()) break;  // break if vector is empty
                 v_pair el = helper::random_ex_vector(srt);
                 removed.emplace_back(el);
 
