@@ -738,8 +738,8 @@ struct _node {
     _node* parent{nullptr};
     _node* left{nullptr};
     _node* right{nullptr};
-    std::pair<const K, V> data;
     unsigned char depth;
+    std::pair<const K, V> data;
 
     explicit _node(_node* parent, std::pair<const K, V>& pair) noexcept:
             parent{parent},
