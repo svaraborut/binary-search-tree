@@ -770,7 +770,7 @@ struct bst<K, V, Compare>::node {
 #ifdef __DEBUG_NODE_RAII
         std::cout << "Destroying: " << data.first << std::endl;
 #endif
-        // Custom RAII to prevent parent deletion
+        // Custom RAII to propagate tree deletion
         delete this->left;
         delete this->right;
     }

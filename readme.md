@@ -6,6 +6,8 @@ added.
 
 ## 🤗 Get
 
+Requirements: `g++`, `build-essentials` (`make`), `valgrind` (if testing mem-leaks)
+
 ```shell
 git clone https://github.com/svaraborut/binary-search-tree.git
 
@@ -14,6 +16,9 @@ make
 
 # Test
 ./test
+
+# Test mem-leaks (note it may take quite some time)
+valgrind --tool=memcheck ./bench
 
 # Benchmark
 ./bench
@@ -324,7 +329,7 @@ Size: 10
 
 ### 😟 Cheats
 
-Erase function signature has been modified to return a the quantity of elements
+Erase function signature has been modified to return the quantity of elements
 deleted.
 ```c++
 size_type erase(const key_type& x);
