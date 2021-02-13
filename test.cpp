@@ -146,11 +146,13 @@ struct bstHelpers {
 
 // DUMMY MAPS
 
-bst<int, std::string> dummy_is_map(std::size_t size = 10) {
-    using map = bst<int, std::string>;
+template<typename V = std::string>
+bst<int, V> dummy_is_map(std::size_t size = 10, V def = V{}) {
+    using map = bst<int, V>;
+    using pair = typename map::value_type;
     map t{};
     for (auto i = 1ul; i <= size; i++)
-        t.insert(map::value_type{i, map::value_type::second_type{}});
+        t.insert(pair{i, def});
     return t;
 }
 
@@ -380,7 +382,10 @@ int main(int argc, char *argv[]) {
 
         // Emplace
         m = map{};
-        m.emplace(pair{1, 1}, pair{2, 2}, pair{2, 3});
+        std::pair<map::iterator, bool> r2 =
+                m.emplace(pair{1, 1}, pair{2, 2}, pair{2, 3});
+        ASSERT(r2.second, "Emplace should be successful");
+        ASSERT(r2.first->first == 1, "Emplace iterator should point to the first element");
         ASSERT(m.size() == 2, "After emplace() size should be 2");
         ASSERT(m[1] == 1, "Emplace should insert key[1]");
         ASSERT(m[2] != 3, "Emplace should not override keys");
@@ -398,6 +403,12 @@ int main(int argc, char *argv[]) {
         m.erase(2);
         ASSERT(m[1] == 123, "m[1] should not be erased");
         ASSERT(!m.has(2), "m[2] should be gone");
+
+        // Call balance
+        m = dummy_is_map<int>(100, 10);
+        m.balance();
+        auto _max_depth = (unsigned char)(std::log2(m.size()) * 1.5);
+        ASSERT(m.depth() <= _max_depth, "Depth should be lower than 150% of log2(size) when balanced");
 
         // Clear
         m.clear();
@@ -495,6 +506,10 @@ int main(int argc, char *argv[]) {
             _cond = _cond && (_range->first >= _l && _range->first <= _u);
         }
         ASSERT(_cond, "range should return keys >= lower and <= upper");
+
+//        auto cit = m.cbegin();
+//        cit->first = 1;   // can not
+//        cit->second = "other"; // can not
 
     }
     END_TEST()

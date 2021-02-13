@@ -312,7 +312,7 @@ class bst {
         }
 
         // If here we have an allocable branch
-        *handle = new node{parent, x};
+        *handle = new node{parent, std::move(x)};
 
 #ifdef __EXPERIMENTAL_AUTO_BALANCE
         __balance_node((*handle)->parent);
@@ -469,8 +469,7 @@ public:
      * @return      a pair<iterator, bool>
      */
     std::pair<iterator, bool> insert(const pair_type& x) { // ✓ testing
-        pair_type t{x}; // Clone the pair
-        node* ref = __insert(std::move(t));
+        node* ref = __insert(pair_type{x}); // Clone the pair
         return ref == nullptr ? NOINSERT : std::pair<iterator, bool>{ iterator{root, ref} , true };
     }
     std::pair<iterator, bool> insert(pair_type&& x) { // ✓ testing
@@ -487,11 +486,8 @@ public:
      */
     template<class... Types>
     std::pair<iterator, bool> emplace(Types&&... args) { // ✓ testing
-        node* ref{nullptr};
-        for (auto&& a : { args... }) {
-            node* ins = __insert(std::move(a));
-            ref = NNL(ref, ins);
-        }
+        node *ref{nullptr}, *ins{nullptr};
+        (..., ((ins = __insert(std::move(args))) && (ref || (ref = ins))));
         return ref == nullptr ? NOINSERT : std::pair<iterator, bool>{ iterator{root, ref} , true };
     }
 
@@ -563,7 +559,7 @@ public:
     }
     const_iterator find(const K& k) const noexcept {
         node* found = __find_key(root, k, EXACT);
-        return found == nullptr ? end() : const_iterator{root, found};
+        return found == nullptr ? cend() : const_iterator{root, found};
     }
 
     /**
@@ -597,18 +593,18 @@ public:
      * @return      A reference to the data related to the key
      */
     V& operator[](const K& k) { // ✓ testing
-        iterator _i = find(k);
-        if (_i == end()) {
-            _i = insert(pair_type{k, V{}}).first;
+        node* found = __find_key(root, k, EXACT);
+        if (found == nullptr) {
+            found = __insert(pair_type{k, V{}});
         }
-        return _i->second;
+        return found->data.second;
     }
     V& operator[](K&& k) { // ✓ testing
-        iterator _i = find(k);
-        if (_i == end()) {
-            _i = insert(pair_type{k, V{}}).first;
+        node* found = __find_key(root, k, EXACT);
+        if (found == nullptr) {
+            found = __insert(pair_type{std::move(k), V{}});
         }
-        return _i->second;
+        return found->data.second;
     }
 
     /**
@@ -621,24 +617,24 @@ public:
      * @return          The iterator
      */
     iterator operator()(const K& lower, const K& upper) noexcept {
-        if (compare(upper, lower)) return iterator{};
+        if (compare(upper, lower)) return end();
         // Check that the RIGHT neighbour is not greater than upper
         node* lower_node = __find_key(root, lower, RIGHT);
-        if (compare(upper, lower_node->data.first)) return iterator{};
+        if (compare(upper, lower_node->data.first)) return end();
         // Check that the LEFT neighbour is not lower than lower
         node* upper_node = __find_key(root, upper, LEFT);
-        if (compare(upper_node->data.first, lower)) return iterator{};
+        if (compare(upper_node->data.first, lower)) return end();
         // Ok
         return iterator{root, lower_node, upper_node};
     }
     const_iterator operator()(const K& lower, const K& upper) const noexcept {
-        if (compare(upper, lower)) return const_iterator{};
+        if (compare(upper, lower)) return cend();
         // Check that the RIGHT neighbour is not greater than upper
         node* lower_node = __find_key(root, lower, RIGHT);
-        if (compare(upper, lower_node->data.first)) return const_iterator{};
+        if (compare(upper, lower_node->data.first)) return cend();
         // Check that the LEFT neighbour is not lower than lower
         node* upper_node = __find_key(root, upper, LEFT);
-        if (compare(upper_node->data.first, lower)) return const_iterator{};
+        if (compare(upper_node->data.first, lower)) return cend();
         // Ok
         return iterator{root, lower_node, upper_node};
     }
